@@ -13,7 +13,7 @@ start:
 	node dist/cli.js
 
 install: build
-	npm install -g .
+	npm install -g . --force
 
 clean:
 	rm -rf dist
