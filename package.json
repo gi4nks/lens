@@ -1,6 +1,6 @@
 {
   "name": "@gi4nks/lens",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "**Lens Shell** is an AI-powered terminal assistant and shell prompt. It acts as an intelligent wrapper that helps you write, explain, and execute commands safely using either local LLMs (via **Ollama**) or cloud models (via **Google Gemini**).",
   "main": "index.js",
   "bin": {
