@@ -1,0 +1,8 @@
+- [ ] Explore project context
+- [ ] Ask clarifying questions
+- [ ] Propose 2-3 approaches
+- [ ] Present design
+- [ ] Write design doc
+- [ ] Spec review loop
+- [ ] User reviews written spec
+- [ ] Transition to implementation

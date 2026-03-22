@@ -1,0 +1,28 @@
+node_modules/
+dist/
+bin/
+.glasses-ctx
+glasses
+.env
+*.log
+
+# Debug and Test scripts
+debug_curl.ts
+debug_hist.ts
+test-ink.tsx
+test-pty.js
+
+# Tool-generated / Metadata
+.codegraph/
+.superpowers/
+.claude/
+.glasses-ctx
+.tsbuildinfo
+coverage/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+
