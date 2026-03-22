@@ -16,6 +16,7 @@ import { safetyChecker } from '../safety/SafetyChecker.js';
 import { ProjectAnalyzer } from '../analyzer/ProjectAnalyzer.js';
 import { aliasManager } from '../alias/AliasManager.js';
 import { OrchestrationEngine } from '../engine/OrchestrationEngine.js';
+import { lensDB } from '../db/LensDB.js';
 import { THEMES } from './themes.js';
 
 export const App = () => {
@@ -71,6 +72,8 @@ export const App = () => {
   const projectContext = useMemo(() => ProjectAnalyzer.getContext(cwd), [cwd]);
 
   const ptyBufferRef = useRef('');
+  // Accumulates raw output for the current command (saved to DB on exit code)
+  const cmdOutputRef = useRef('');
 
   useEffect(() => {
     const shell = new ShellManager();
@@ -80,13 +83,13 @@ export const App = () => {
       setShellBusy(shell.isBusy);
       // Append new data to buffer
       ptyBufferRef.current += data;
-      
+
       // Process only complete lines
       if (ptyBufferRef.current.includes('\n')) {
         const lines = ptyBufferRef.current.split('\n');
         // Keep the last partial line in the buffer
         ptyBufferRef.current = lines.pop() || '';
-        
+
         const cmd = lastShellCmdRef.current;
 
         lines.forEach((line, index) => {
@@ -99,13 +102,14 @@ export const App = () => {
               .replace(/\x1B[=>]/g, '')
               .replace(/\x1B\][^\x07]*\x07/g, '')
               .trim();
-            
+
             // If the line is just the command or ends with it (prompt + command), skip it
             if (cleanLine === cmd || cleanLine.endsWith(cmd)) {
               return;
             }
           }
 
+          cmdOutputRef.current += line + '\n';
           addHistory({ type: 'shell', content: line });
         });
       }
@@ -120,25 +124,33 @@ export const App = () => {
       // Flush any trailing output that didn't end with a newline
       if (ptyBufferRef.current.length > 0) {
         if (ptyBufferRef.current.trim().length > 0) {
+          cmdOutputRef.current += ptyBufferRef.current;
           useAppStore.getState().addHistory({ type: 'shell', content: ptyBufferRef.current });
         }
         ptyBufferRef.current = '';
       }
 
       const cmd = lastShellCmdRef.current;
+      const output = cmdOutputRef.current;
+      cmdOutputRef.current = '';
+
       if (cmd !== null) {
         historyManager.append({ userInput: cmd, mode: 'shell', executedCommand: cmd, exitCode: code });
-        
+
+        // Persist to SQLite DB with full output
+        lensDB.append({
+          command: cmd,
+          output: output.slice(-4000), // cap at 4KB
+          exit_code: code,
+          cwd: useAppStore.getState().cwd,
+          timestamp: Date.now(),
+        });
+
         // --- SEAMLESS FIX LOGIC ---
         if (code !== 0) {
-          const recentErrorOutput = useAppStore.getState().history
-            .slice(-5)
-            .map(h => h.content)
-            .join('\n');
-
-          const fixPrompt = `The command "${cmd}" failed with exit code ${code}. 
-Recent output context:
-${recentErrorOutput}
+          const fixPrompt = `The command "${cmd}" failed with exit code ${code}.
+Output:
+${output.slice(-2000)}
 
 Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the command in the format: FIX_COMMAND: <command>`;
           
@@ -276,13 +288,14 @@ Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the
       setIsThinking(true);
       addHistory({ type: 'system', content: `[History] Searching for: "${query}"...` });
 
-      const historyContext = useAppStore.getState().commandHistory
-        .slice(-100)
-        .reverse()
-        .join('\n');
+      // Use persistent DB history (richer, cross-session)
+      const dbRecords = lensDB.recent(200);
+      const historyContext = dbRecords.length > 0
+        ? dbRecords.map(r => `[exit:${r.exit_code}] ${r.command}`).join('\n')
+        : useAppStore.getState().commandHistory.slice(-100).reverse().join('\n');
 
       const semanticPrompt = `You are a terminal history expert. Find the ONE command in the history that best matches this intent: "${query}".
-History:
+History (format: [exit_code] command):
 ${historyContext}
 
 Reply ONLY with the command string, nothing else. If no good match found, reply "NOT_FOUND".`;
