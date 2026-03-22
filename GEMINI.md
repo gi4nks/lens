@@ -36,3 +36,15 @@ Lens Shell is a professional, TUI-based intelligent wrapper for your terminal. I
 
 ## 🚀 Integration
 Lens provides a full-screen interactive session via the `lens` command and no longer hooks into the shell precmd. Run `lens` directly whenever you need an AI-augmented terminal environment.
+
+## 🚢 Git & Releases Strategy
+
+### Conventional Commits
+Lens Shell follows **Conventional Commits** for all version control operations.
+- **Mandate**: When performing a commit, always use the prefix format: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `perf:`, `test:`, or `build:`.
+- **Automated Releases**: The GitHub Actions workflow (CI/CD) uses these prefixes to automatically calculate semantic version jumps (Major/Minor/Patch).
+
+### CI/CD Guidelines
+- **CI**: On every pull request and push to `main`, linting, testing, and building are mandatory.
+- **Semantic Release**: Versioning, changelog generation, and tagging are fully automated via `semantic-release`. Manual versioning in `package.json` is discouraged.
+- **Release Tags**: Tags (e.g., `v1.0.0`) are generated automatically. Do not create them manually unless establishing a new baseline.
