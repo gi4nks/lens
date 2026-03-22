@@ -1,3 +1,13 @@
+# [1.1.0](https://github.com/gi4nks/lens/compare/v1.0.1...v1.1.0) (2026-03-22)
+
+
+### Features
+
+* add /output command to browse command output from DB ([1ba0260](https://github.com/gi4nks/lens/commit/1ba0260cfd275ee0b3b15fc3695b537b1fb4690e))
+* add SQLite persistence layer for command history ([91f088d](https://github.com/gi4nks/lens/commit/91f088d9521761aa39c203a346ac96397d387bf4))
+* command-aware output renderer with file type colors ([69474a8](https://github.com/gi4nks/lens/commit/69474a8954c16db0b96eda0d61fb4dd0c24767f1))
+* interactive shell improvements and OSC header bug fix ([695e878](https://github.com/gi4nks/lens/commit/695e878612bf9c55a078d4750ee5e8edf9f24313))
+
 ## [1.0.1](https://github.com/gi4nks/lens/compare/v1.0.0...v1.0.1) (2026-03-22)
 
 
