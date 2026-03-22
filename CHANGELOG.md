@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/gi4nks/lens/compare/v1.0.0...v1.1.0) (2026-03-22)
+
+
+### Bug Fixes
+
+* repair package.json syntax error ([186e6ac](https://github.com/gi4nks/lens/commit/186e6aca7ba3fd2ba2a9c8285cfa9adad6f5c7d9))
+
+
+### Features
+
+* add quick tips section to README ([b1629f5](https://github.com/gi4nks/lens/commit/b1629f53e3f911500418af0739b7fc89f2a3cd14))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
