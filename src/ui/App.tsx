@@ -33,6 +33,10 @@ export const App = () => {
   const setPendingSafetyCheck = useAppStore((state) => state.setPendingSafetyCheck);
   const setAliases = useAppStore((state) => state.setAliases);
   const setAiFixSuggestion = useAppStore((state) => state.setAiFixSuggestion);
+  const isShellBusy = useAppStore((state) => state.isShellBusy);
+  const setShellBusy = useAppStore((state) => state.setShellBusy);
+  const pendingOrchestrationPlan = useAppStore((state) => state.pendingOrchestrationPlan);
+  const setPendingOrchestrationPlan = useAppStore((state) => state.setPendingOrchestrationPlan);
   const currentThemeName = useAppStore((state) => state.theme);
   const theme = THEMES[currentThemeName] || THEMES.dark;
 
@@ -53,7 +57,12 @@ export const App = () => {
   }, [setAliases]);
 
   useEffect(() => {
-    const handleResize = () => setTermHeight(process.stdout.rows);
+    const handleResize = () => {
+      setTermHeight(process.stdout.rows);
+      if (shellRef.current) {
+        shellRef.current.resize(process.stdout.columns || 80, process.stdout.rows || 24);
+      }
+    };
     process.stdout.on('resize', handleResize);
     return () => { process.stdout.off('resize', handleResize); };
   }, []);
@@ -68,6 +77,7 @@ export const App = () => {
     shell.start();
 
     shell.on('data', (data: string) => {
+      setShellBusy(shell.isBusy);
       // Append new data to buffer
       ptyBufferRef.current += data;
       
@@ -106,6 +116,7 @@ export const App = () => {
     });
 
     shell.on('exitCode', async (code: number) => {
+      setShellBusy(false);
       // Flush any trailing output that didn't end with a newline
       if (ptyBufferRef.current.length > 0) {
         if (ptyBufferRef.current.trim().length > 0) {
@@ -120,7 +131,16 @@ export const App = () => {
         
         // --- SEAMLESS FIX LOGIC ---
         if (code !== 0) {
-          const fixPrompt = `The command "${cmd}" failed with exit code ${code}. Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the command in the format: FIX_COMMAND: <command>`;
+          const recentErrorOutput = useAppStore.getState().history
+            .slice(-5)
+            .map(h => h.content)
+            .join('\n');
+
+          const fixPrompt = `The command "${cmd}" failed with exit code ${code}. 
+Recent output context:
+${recentErrorOutput}
+
+Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the command in the format: FIX_COMMAND: <command>`;
           
           try {
             const activeProvider = createProvider(aiProviderName, {
@@ -152,8 +172,40 @@ export const App = () => {
     return () => shell.stop();
   }, [addHistory, setCwd, aiProviderName, aiModelName, apiKeys, setAiFixSuggestion]);
 
+  const handleSignal = (signal: string) => {
+    if (shellRef.current) {
+      shellRef.current.sendSignal(signal);
+    }
+  };
+
   const handleSubmit = async (cmd: string) => {
-    if (!cmd.trim()) return;
+    if (!cmd.trim() || isShellBusy) return;
+
+    // ── Handle pending orchestration plan confirmation ────────────────────────
+    if (pendingOrchestrationPlan) {
+      const answer = cmd.trim().toLowerCase();
+      if (answer === 'y') {
+        const plan = [...pendingOrchestrationPlan];
+        setPendingOrchestrationPlan(null);
+        addHistory({ type: 'system', content: `[Orchestration] Starting ${plan.length} commands...` });
+        
+        for (const planCmd of plan) {
+          addHistory({ type: 'system', content: `  ❯ ${planCmd}` });
+          lastShellCmdRef.current = planCmd;
+          if (shellRef.current) {
+            shellRef.current.write(planCmd + '\r');
+            // We need a small wait or a way to wait for exitCode event
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+        }
+        useAppStore.setState({ input: '' });
+      } else if (answer === 'n') {
+        addHistory({ type: 'system', content: '[Orchestration] Plan cancelled' });
+        setPendingOrchestrationPlan(null);
+        useAppStore.setState({ input: '' });
+      }
+      return;
+    }
 
     // ── Handle pending safety check confirmation ──────────────────────────────
     if (pendingSafetyCheck) {
@@ -213,6 +265,51 @@ export const App = () => {
 
     if (cmd.startsWith('/clear')) {
       useAppStore.setState({ history: [] });
+      return;
+    }
+
+    if (cmd.startsWith('/history ')) {
+      const query = cmd.replace('/history ', '').trim();
+      if (!query) return;
+
+      addCommandHistory(cmd);
+      setIsThinking(true);
+      addHistory({ type: 'system', content: `[History] Searching for: "${query}"...` });
+
+      const historyContext = useAppStore.getState().commandHistory
+        .slice(-100)
+        .reverse()
+        .join('\n');
+
+      const semanticPrompt = `You are a terminal history expert. Find the ONE command in the history that best matches this intent: "${query}".
+History:
+${historyContext}
+
+Reply ONLY with the command string, nothing else. If no good match found, reply "NOT_FOUND".`;
+
+      try {
+        const activeProvider = createProvider(aiProviderName, {
+          model: aiModelName,
+          apiKey: apiKeys[aiProviderName],
+        });
+        const stream = activeProvider.streamChat([{ role: 'user', content: semanticPrompt }]);
+        let full = '';
+        for await (const chunk of stream) {
+          full += chunk;
+        }
+        
+        const bestMatch = full.trim();
+        if (bestMatch && bestMatch !== 'NOT_FOUND') {
+          useAppStore.setState({ input: bestMatch });
+          addHistory({ type: 'system', content: `[History] Best match: ${bestMatch}. Press Enter to execute.` });
+        } else {
+          addHistory({ type: 'system', content: '[History] No semantic match found in recent history' });
+        }
+      } catch (err: unknown) {
+        addHistory({ type: 'system', content: `[Error] ${err instanceof Error ? err.message : String(err)}` });
+      }
+      
+      setIsThinking(false);
       return;
     }
 
@@ -313,9 +410,14 @@ export const App = () => {
       addCommandHistory(cmd);
       setIsThinking(true);
       
+      const recentOutput = history
+        .slice(-10)
+        .map(h => `[${h.type}] ${h.content}`)
+        .join('\n');
+
       const systemPrompt = isAutoTranslation
-        ? `The user asked in natural language: "${query}". You are a macOS terminal translator. Provide a JSON response with exactly this format, nothing else:\n{\n  "suggestions": [\n    {"cmd": "command1", "description": "short explanation"},\n    {"cmd": "command2", "description": "short explanation"},\n    {"cmd": "command3", "description": "short explanation"}\n  ]\n}\nThe descriptions must be short (max 50 chars). Commands must be exact and runnable on macOS.`
-        : `You are a technical development assistant. Use the project context below to provide accurate and relevant answers.\n\n${projectContext}\n\nIf the user asks to execute a series of actions (e.g. "create a project", "install packages"), respond including a final JSON with this format:\n{\n  "orchestration_plan": ["command1", "command2", ...]\n}`;
+        ? `The user asked in natural language: "${query}". You are a macOS terminal translator. Current CWD: ${cwd}. Recent shell output:\n${recentOutput}\n\nProvide a JSON response with exactly this format, nothing else:\n{\n  "suggestions": [\n    {"cmd": "command1", "description": "short explanation"},\n    {"cmd": "command2", "description": "short explanation"},\n    {"cmd": "command3", "description": "short explanation"}\n  ]\n}\nThe descriptions must be short (max 50 chars). Commands must be exact and runnable on macOS.`
+        : `You are a technical development assistant. Use the project context below to provide accurate and relevant answers. Current CWD: ${cwd}. Recent shell history:\n${recentOutput}\n\nProject Context:\n${projectContext}\n\nIf the user asks to execute a series of actions (e.g. "create a project", "install packages"), respond including a final JSON with this format:\n{\n  "orchestration_plan": ["command1", "command2", ...]\n}`;
 
       addHistory({ type: 'ai', content: '' });
 
@@ -362,16 +464,12 @@ export const App = () => {
           // Check for orchestration plan
           const plan = OrchestrationEngine.extractPlan(full);
           if (plan && plan.length > 0) {
-            addHistory({ type: 'system', content: `[Orchestration] Executing ${plan.length} commands...` });
-            for (const planCmd of plan) {
-              addHistory({ type: 'system', content: `  ❯ ${planCmd}` });
-              lastShellCmdRef.current = planCmd;
-              if (shellRef.current) {
-                shellRef.current.write(planCmd + '\r');
-                // Wait a bit for the command to execute (simplified)
-                await new Promise((r) => setTimeout(r, 500));
-              }
-            }
+            setPendingOrchestrationPlan(plan);
+            addHistory({
+              type: 'system',
+              content: `[Orchestration] Proposed plan:\n${plan.map(p => `  ❯ ${p}`).join('\n')}\nExecute? (y/n)`,
+            });
+            useAppStore.setState({ input: '' });
           }
         }
       } catch (err: unknown) {
@@ -445,7 +543,7 @@ export const App = () => {
               <Text dimColor>   Configuration Mode Active...</Text>
             </Box>
           ) : (
-            <GhostPrompt onSubmit={handleSubmit} />
+            <GhostPrompt onSubmit={handleSubmit} onSignal={handleSignal} />
           )}
         </Box>
       )}

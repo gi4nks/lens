@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 export class ShellManager extends EventEmitter {
   private ptyProcess: pty.IPty | null = null;
   public isRunning: boolean = false;
+  public isBusy: boolean = false;
 
   start() {
     let shellFile = process.env.SHELL || '/bin/zsh';
@@ -116,15 +117,30 @@ stty -echo -icrnl
 
       // Intercept OSC 7 (cwd) and OSC 9001 (exit code) before stripping
       // Note: use original 'data' because 'clean' removed OSCs
-      const oscCwdRegex  = /\x1b\]7;([^\x07]*)\x07/g;
-      const oscExitRegex = /\x1b\]9001;exitCode=(\d+)\x07/g;
+      // Stop on \x1b (ESC) to avoid bleeding into adjacent sequences; accept BEL or ST as terminator
+      const oscCwdRegex  = /\x1b\]7;([^\x07\x1b]*)(?:\x07|\x1b\\)/g;
+      const oscExitRegex = /\x1b\]9001;exitCode=(\d+)(?:\x07|\x1b\\)/g;
       let match: RegExpExecArray | null;
-      while ((match = oscCwdRegex.exec(data))  !== null) this.emit('cwd', match[1]);
-      while ((match = oscExitRegex.exec(data)) !== null) this.emit('exitCode', parseInt(match[1], 10));
+      while ((match = oscCwdRegex.exec(data))  !== null) {
+        let rawCwd = match[1];
+        // Handle file://hostname/path format
+        if (rawCwd.startsWith('file://')) {
+          const url = new URL(rawCwd);
+          rawCwd = decodeURIComponent(url.pathname);
+        }
+        // Strip any remaining control characters that might have leaked in
+        rawCwd = rawCwd.replace(/[\x00-\x1f\x7f]/g, '');
+        if (rawCwd) this.emit('cwd', rawCwd);
+      }
+      while ((match = oscExitRegex.exec(data)) !== null) {
+        this.isBusy = false;
+        this.emit('exitCode', parseInt(match[1], 10));
+      }
     });
 
     this.ptyProcess.onExit(({ exitCode }: { exitCode: number; signal: number }) => {
       this.isRunning = false;
+      this.isBusy = false;
       this.emit('exit', exitCode);
       // Restore alt screen safely just in case App crashes
       process.stdout.write('\x1b[?1049l');
@@ -134,7 +150,22 @@ stty -echo -icrnl
 
   write(cmd: string) {
     if (this.ptyProcess && this.isRunning) {
+      if (cmd.includes('\r')) {
+        this.isBusy = true;
+      }
       this.ptyProcess.write(cmd);
+    }
+  }
+
+  sendSignal(signal: string) {
+    if (this.ptyProcess && this.isRunning) {
+       this.ptyProcess.write(signal);
+    }
+  }
+
+  resize(cols: number, rows: number) {
+    if (this.ptyProcess && this.isRunning) {
+      this.ptyProcess.resize(cols, rows);
     }
   }
 

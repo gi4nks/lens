@@ -15,7 +15,8 @@ export class ContextParser {
     }
 
     // Autocomplete files/folders for the last token
-    const tokens = str.split(' ');
+    // If input ends with space, we're looking for ANY file in the current dir
+    const tokens = input.split(' ');
     const lastToken = tokens[tokens.length - 1];
 
     try {
@@ -32,7 +33,16 @@ export class ContextParser {
       if (fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory()) {
         const files = fs.readdirSync(targetDir);
         return files
-          .filter((f) => f.startsWith(filePrefix) && f !== filePrefix)
+          .filter((f) => {
+             const startsWithPrefix = f.startsWith(filePrefix);
+             const isHidden = f.startsWith('.');
+             const isRequestedHidden = filePrefix.startsWith('.');
+             
+             // If user didn't start with '.', don't show hidden files
+             if (!isRequestedHidden && isHidden) return false;
+             
+             return startsWithPrefix && f !== filePrefix;
+          })
           .map((f) => {
              // Append slash to directories for better UX
              const fullPath = path.join(targetDir, f);

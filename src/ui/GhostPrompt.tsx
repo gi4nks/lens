@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { useAppStore } from '../store/index.js';
 import { ContextParser } from '../modules/ContextParser.js';
 import { THEMES } from './themes.js';
 
-export const GhostPrompt = ({ onSubmit }: { onSubmit: (text: string) => void }) => {
+export const GhostPrompt = ({ onSubmit, onSignal }: { onSubmit: (text: string) => void, onSignal: (signal: string) => void }) => {
   const [selectedHintIndex, setSelectedHintIndex] = useState(-1);
   const input = useAppStore((state) => state.input);
   const commandHistory = useAppStore((state) => state.commandHistory);
@@ -21,13 +21,19 @@ export const GhostPrompt = ({ onSubmit }: { onSubmit: (text: string) => void }) 
   const resetScroll = useAppStore((state) => state.resetScroll);
   const aiFixSuggestion = useAppStore((state) => state.aiFixSuggestion);
   const setAiFixSuggestion = useAppStore((state) => state.setAiFixSuggestion);
+  const isShellBusy = useAppStore((state) => state.isShellBusy);
+  const pendingOrchestrationPlan = useAppStore((state) => state.pendingOrchestrationPlan);
+  const cwd = useAppStore((state) => state.cwd);
   const currentThemeName = useAppStore((state) => state.theme);
   const theme = THEMES[currentThemeName] || THEMES.dark;
 
   const isTabPress = useRef(false);
 
+  const isShell = useMemo(() => ContextParser.isShellCommand(input), [input]);
+
   useEffect(() => {
-    if (input.length > 0) {
+    // Hide ghost text if input ends with a space to avoid confusion with file hints
+    if (input.length > 0 && !input.endsWith(' ')) {
       const match = [...commandHistory].reverse().find(
         (cmd) => cmd.startsWith(input) && cmd !== input
       );
@@ -37,7 +43,7 @@ export const GhostPrompt = ({ onSubmit }: { onSubmit: (text: string) => void }) 
     }
 
     if (!isTabPress.current) {
-      const newHints = ContextParser.getHints(input, process.cwd());
+      const newHints = ContextParser.getHints(input, cwd);
       setHints(newHints);
       setSelectedHintIndex(-1);
     }
@@ -45,6 +51,12 @@ export const GhostPrompt = ({ onSubmit }: { onSubmit: (text: string) => void }) 
   }, [input, commandHistory]);
 
   useInput((char, key) => {
+    if (key.ctrl && char === 'c') {
+      onSignal('\x03'); // Send SIGINT sequence
+      setInput('');
+      return;
+    }
+
     if (key.pageDown || (key.shift && key.downArrow)) return scrollDown(10);
     if (key.pageUp || (key.shift && key.upArrow)) return scrollUp(10);
 
@@ -148,9 +160,14 @@ export const GhostPrompt = ({ onSubmit }: { onSubmit: (text: string) => void }) 
       {/* RIGA 2: PROMPT */}
       <Box width="100%" height={1} paddingLeft={1}>
         <Text>
-          <Text color={theme.secondary} bold>❯ </Text>
-          <Text>{input}</Text>
-          <Text color={theme.dim}>{ghostText}</Text>
+          <Text color={isShell ? theme.secondary : theme.primary} bold>{isShellBusy ? '⏳ ' : (isShell ? '❯ ' : '✨ ')}</Text>
+          <Text>{isShellBusy ? '' : input}</Text>
+          <Text color={theme.dim}>
+            {isShellBusy 
+              ? 'Shell is busy... (Ctrl+C to abort)' 
+              : (pendingOrchestrationPlan ? 'Execute plan? (y/n)' : ghostText)
+            }
+          </Text>
         </Text>
       </Box>
 

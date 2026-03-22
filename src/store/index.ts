@@ -70,6 +70,8 @@ interface AppState {
   suggestions: SuggestionItem[];
   selectedSuggestionIndex: number;
   aiFixSuggestion: string | null;
+  isShellBusy: boolean;
+  pendingOrchestrationPlan: string[] | null;
 
   // Actions
   setInput: (text: string) => void;
@@ -95,6 +97,8 @@ interface AppState {
   setSuggestions: (suggestions: SuggestionItem[]) => void;
   setSelectedSuggestionIndex: (index: number) => void;
   setAiFixSuggestion: (suggestion: string | null) => void;
+  setShellBusy: (busy: boolean) => void;
+  setPendingOrchestrationPlan: (plan: string[] | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -120,6 +124,8 @@ export const useAppStore = create<AppState>((set) => ({
   suggestions: [],
   selectedSuggestionIndex: 0,
   aiFixSuggestion: null,
+  isShellBusy: false,
+  pendingOrchestrationPlan: null,
 
   setInput: (text) => set({ input: text }),
   setGhostText: (text) => set({ ghostText: text }),
@@ -180,4 +186,6 @@ export const useAppStore = create<AppState>((set) => ({
   setSuggestions: (suggestions) => set({ suggestions, selectedSuggestionIndex: 0 }),
   setSelectedSuggestionIndex: (index) => set({ selectedSuggestionIndex: index }),
   setAiFixSuggestion: (suggestion) => set({ aiFixSuggestion: suggestion }),
+  setShellBusy: (isShellBusy) => set({ isShellBusy }),
+  setPendingOrchestrationPlan: (pendingOrchestrationPlan) => set({ pendingOrchestrationPlan }),
 }));
