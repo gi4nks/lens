@@ -7,6 +7,7 @@ import { GhostPrompt } from './GhostPrompt.js';
 import { ConfigView } from './ConfigView.js';
 import { HistoryView } from './HistoryView.js';
 import { SuggestionsView } from './SuggestionsView.js';
+import { OutputView } from './OutputView.js';
 import { ShellManager } from '../pty/ShellManager.js';
 import { createProvider, Message } from '../ai/Provider.js';
 import { useAppStore } from '../store/index.js';
@@ -280,6 +281,12 @@ Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the
       return;
     }
 
+    if (cmd.startsWith('/output')) {
+      const query = cmd.replace('/output', '').trim();
+      useAppStore.setState({ view: 'output', outputViewQuery: query, input: '' });
+      return;
+    }
+
     if (cmd.startsWith('/history ')) {
       const query = cmd.replace('/history ', '').trim();
       if (!query) return;
@@ -334,7 +341,7 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
     if (cmd.startsWith('/help')) {
       addHistory({
         type: 'system',
-        content: `[Help] /config | /clear | /history | /gpt <prompt> | /fix | /alias add|list|remove | <natural lang>`,
+        content: `[Help] /config | /clear | /history | /output [filter] | /gpt <prompt> | /fix | /alias add|list|remove | <natural lang>`,
       });
       return;
     }
@@ -537,6 +544,8 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
           <HistoryView />
         ) : view === 'suggestions' ? (
           <SuggestionsView />
+        ) : view === 'output' ? (
+          <OutputView />
         ) : (
           visibleHistory.map((entry, index) => (
             <Box key={index} width="100%">
@@ -549,7 +558,7 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
       </Box>
       
       {/* PROMPT */}
-      {view !== 'history' && view !== 'suggestions' && (
+      {view !== 'history' && view !== 'suggestions' && view !== 'output' && (
         <Box backgroundColor={theme.bg} height={3} width="100%" flexDirection="column">
           {view === 'config' ? (
             <Box paddingY={1} paddingX={1} width="100%">

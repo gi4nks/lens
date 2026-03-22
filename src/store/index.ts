@@ -61,7 +61,8 @@ interface AppState {
   apiKeys: Record<string, string>;
   theme: string;
   maxHistorySize: number;
-  view: 'shell' | 'config' | 'history' | 'suggestions';
+  view: 'shell' | 'config' | 'history' | 'suggestions' | 'output';
+  outputViewQuery: string;
   error: string | null;
   scrollOffset: number;
   cwd: string;
@@ -116,6 +117,7 @@ export const useAppStore = create<AppState>((set) => ({
   theme: initialConfig.theme || 'dark',
   maxHistorySize: initialConfig.maxHistorySize || 50,
   view: 'shell',
+  outputViewQuery: '',
   error: null,
   scrollOffset: 0,
   cwd: process.cwd(),

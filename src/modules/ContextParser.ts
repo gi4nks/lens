@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 
-const SLASH_COMMANDS = ['/help', '/clear', '/config', '/history', '/gpt', '/fix', '/alias'];
+const SLASH_COMMANDS = ['/help', '/clear', '/config', '/history', '/output', '/gpt', '/fix', '/alias'];
 
 export class ContextParser {
   // Returns contextual hints/autocompletions based on the current input string
