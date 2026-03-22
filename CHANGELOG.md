@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/gi4nks/lens/compare/v1.0.0...v1.1.0) (2026-03-22)
+
+
+### Bug Fixes
+
+* add packages permission and build step to release workflow ([a34e136](https://github.com/gi4nks/lens/commit/a34e136c02a8ae618c3109cd327d3b4659890812))
+* repair package.json syntax error ([5ee198b](https://github.com/gi4nks/lens/commit/5ee198b79e6859a4135cf8170fdf3af463ad2420))
+
+
+### Features
+
+* add quick tips section to README ([6069127](https://github.com/gi4nks/lens/commit/6069127d6a12d513e49232d53eed926851893ca7))
+
 ## [1.1.1](https://github.com/gi4nks/lens/compare/v1.1.0...v1.1.1) (2026-03-22)
 
 
