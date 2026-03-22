@@ -43,12 +43,11 @@ Just run `lens` to enter the full-screen interface.
 - **Tab**: Cycle through autocomplete suggestions (commands, files, or `/` commands).
 - **Arrows (Up/Down)**: Navigate command history.
 - **Right Arrow (→)**: Accept Ghost Suggestion.
-- **Internal Commands**:
-  - `/model`: Switch between available LLM models.
-  - `/info`: Show detailed system and project environment.
-  - `/reset`: Clear AI conversation history.
-  - `/help`: Show the help screen.
-  - `/q`: Quit.
+
+### 💡 Quick Tips
+- **Natural Language**: Type `show me the last 5 git commits` and Lens will translate it into `git log -n 5`.
+- **Safety**: Try `rm -rf .` and notice how Lens asks for confirmation before executing dangerous commands.
+- **Context**: Lens knows you are in a Node.js project if it sees a `package.json`, tailoring its suggestions accordingly.
 
 ---
 
