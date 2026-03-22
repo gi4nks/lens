@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/gi4nks/lens/compare/v1.0.0...v1.0.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* use --force in Makefile install target to overwrite existing binary ([0e84f85](https://github.com/gi4nks/lens/commit/0e84f85216ede7a95f26a69ac427aab030726c13))
+
 # 1.0.0 (2026-03-22)
 
 
