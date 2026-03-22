@@ -1,5 +1,5 @@
 {
-  "name": "lens",
+  "name": "@gi4nks/lens",
   "version": "1.0.0",
   "description": "**Lens Shell** is an AI-powered terminal assistant and shell prompt. It acts as an intelligent wrapper that helps you write, explain, and execute commands safely using either local LLMs (via **Ollama**) or cloud models (via **Google Gemini**).",
   "main": "index.js",
@@ -9,7 +9,14 @@
   "directories": {
     "doc": "docs"
   },
-  "scripts": {
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gi4nks/lens.git"
+  },
+...
     "dev": "tsx src/cli.ts",
     "build": "tsup",
     "start": "node dist/cli.js",
