@@ -3,6 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import { useAppStore } from '../store/index.js';
 import { ContextParser } from '../modules/ContextParser.js';
 import { THEMES } from './themes.js';
+import { getFileColor } from './fileColors.js';
 
 export const GhostPrompt = ({ onSubmit, onSignal }: { onSubmit: (text: string) => void, onSignal: (signal: string) => void }) => {
   const [selectedHintIndex, setSelectedHintIndex] = useState(-1);
@@ -176,9 +177,17 @@ export const GhostPrompt = ({ onSubmit, onSignal }: { onSubmit: (text: string) =
         <Text>
           {visibleHints.map((hint, i) => {
             const isActive = selectedHintIndex >= 0 && i === selectedHintIndex;
+            const isDir = hint.endsWith('/');
+            const textColor = getFileColor(hint, theme);
+
             return (
-              <Text key={i} color={isActive ? theme.primary : theme.dim} bold={isActive}>
-                {hint}{'  '}
+              <Text 
+                key={i} 
+                color={isActive ? theme.bg : textColor} 
+                bold={isActive || isDir}
+                backgroundColor={isActive ? theme.primary : undefined}
+              >
+                {hint}{' '}
               </Text>
             );
           })}

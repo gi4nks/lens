@@ -30,6 +30,7 @@ export interface HistoryEntry {
   type: 'shell' | 'ai' | 'system';
   content: string;
   append?: boolean;
+  command?: string; // command that produced this shell output line
 }
 
 export interface AliasEntry {

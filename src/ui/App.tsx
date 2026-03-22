@@ -19,6 +19,7 @@ import { aliasManager } from '../alias/AliasManager.js';
 import { OrchestrationEngine } from '../engine/OrchestrationEngine.js';
 import { lensDB } from '../db/LensDB.js';
 import { THEMES } from './themes.js';
+import { OutputRenderer, groupHistoryForRender } from './OutputRenderer.js';
 
 export const App = () => {
   const history = useAppStore((state) => state.history);
@@ -93,11 +94,18 @@ export const App = () => {
 
         const cmd = lastShellCmdRef.current;
 
-        lines.forEach((line, index) => {
+        // Track whether we've checked the first non-empty line for echo.
+        // Using index === 0 is wrong: empty lines (e.g. from ZLE's \r\n before
+        // the echo) are skipped early via `return`, but their index still
+        // increments, so the actual echo ends up at index 1+ and bypasses the filter.
+        let echoChecked = false;
+
+        lines.forEach((line) => {
           if (line.trim().length === 0) return;
 
-          // Skip command echo: more robust check
-          if (cmd && index === 0) {
+          // Skip command echo on the first meaningful line
+          if (cmd && !echoChecked) {
+            echoChecked = true;
             const cleanLine = line
               .replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, '')
               .replace(/\x1B[=>]/g, '')
@@ -111,7 +119,7 @@ export const App = () => {
           }
 
           cmdOutputRef.current += line + '\n';
-          addHistory({ type: 'shell', content: line });
+          addHistory({ type: 'shell', content: line, command: cmd ?? undefined });
         });
       }
     });
@@ -126,7 +134,7 @@ export const App = () => {
       if (ptyBufferRef.current.length > 0) {
         if (ptyBufferRef.current.trim().length > 0) {
           cmdOutputRef.current += ptyBufferRef.current;
-          useAppStore.getState().addHistory({ type: 'shell', content: ptyBufferRef.current });
+          useAppStore.getState().addHistory({ type: 'shell', content: ptyBufferRef.current, command: lastShellCmdRef.current ?? undefined });
         }
         ptyBufferRef.current = '';
       }
@@ -547,11 +555,15 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
         ) : view === 'output' ? (
           <OutputView />
         ) : (
-          visibleHistory.map((entry, index) => (
+          groupHistoryForRender(visibleHistory).map((group, index) => (
             <Box key={index} width="100%">
-              <Text wrap="wrap" color={entry.type === 'ai' ? theme.secondary : entry.type === 'system' ? theme.warning : undefined}>
-                {entry.content}
-              </Text>
+              {group.type === 'shell' ? (
+                <OutputRenderer group={group} theme={theme} />
+              ) : (
+                <Text wrap="wrap" color={group.type === 'ai' ? theme.secondary : theme.warning}>
+                  {group.lines[0]}
+                </Text>
+              )}
             </Box>
           ))
         )}

@@ -38,13 +38,26 @@ export class ContextParser {
              const isHidden = f.startsWith('.');
              const isRequestedHidden = filePrefix.startsWith('.');
              
-             // If user didn't start with '.', don't show hidden files
              if (!isRequestedHidden && isHidden) return false;
              
              return startsWithPrefix && f !== filePrefix;
           })
+          .sort((a, b) => {
+             // Check if they are directories
+             const pathA = path.join(targetDir, a);
+             const pathB = path.join(targetDir, b);
+             let isDirA = false;
+             let isDirB = false;
+             try { isDirA = fs.statSync(pathA).isDirectory(); } catch {}
+             try { isDirB = fs.statSync(pathB).isDirectory(); } catch {}
+             
+             if (isDirA && !isDirB) return -1;
+             if (!isDirA && isDirB) return 1;
+             
+             // Case-insensitive alphabetical sort
+             return a.toLowerCase().localeCompare(b.toLowerCase());
+          })
           .map((f) => {
-             // Append slash to directories for better UX
              const fullPath = path.join(targetDir, f);
              try {
                 if (fs.statSync(fullPath).isDirectory()) return f + '/';

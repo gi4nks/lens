@@ -123,10 +123,16 @@ stty -echo -icrnl
       let match: RegExpExecArray | null;
       while ((match = oscCwdRegex.exec(data))  !== null) {
         let rawCwd = match[1];
-        // Handle file://hostname/path format
         if (rawCwd.startsWith('file://')) {
-          const url = new URL(rawCwd);
-          rawCwd = decodeURIComponent(url.pathname);
+          try {
+            // URL pathname on macOS might contain %20 etc.
+            const url = new URL(rawCwd);
+            rawCwd = decodeURIComponent(url.pathname);
+          } catch {
+            // Manual cleanup if URL is malformed
+            rawCwd = rawCwd.replace(/^file:\/\/[^\/]+/, '');
+            rawCwd = decodeURIComponent(rawCwd);
+          }
         }
         // Strip any remaining control characters that might have leaked in
         rawCwd = rawCwd.replace(/[\x00-\x1f\x7f]/g, '');
