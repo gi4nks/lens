@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/gi4nks/lens/compare/v1.1.0...v1.1.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* add packages permission and build step to release workflow ([48123fc](https://github.com/gi4nks/lens/commit/48123fc629736bbfeca1cc2eef9585861d1e7dd3))
+
 # [1.1.0](https://github.com/gi4nks/lens/compare/v1.0.0...v1.1.0) (2026-03-22)
 
 
