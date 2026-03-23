@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/gi4nks/lens/compare/v1.1.0...v1.2.0) (2026-03-23)
+
+
+### Features
+
+* add background tasks, alias TUI, and /quit command ([8f6172f](https://github.com/gi4nks/lens/commit/8f6172f93adad7c601ea2e083ee20b1a8e11a193))
+
 # [1.1.0](https://github.com/gi4nks/lens/compare/v1.0.1...v1.1.0) (2026-03-22)
 
 
