@@ -22,11 +22,17 @@ src/
     fileColors.ts               Maps filenames/extensions to theme-consistent colors.
     themes.ts                   Theme definitions (dark, sunset, ocean, forest, mono).
     OutputView.tsx              /output command: SQLite DB browser UI.
-    HistoryView.tsx             History view.
+    HistoryView.tsx             /history view.
     ConfigView.tsx              /config view.
     SuggestionsView.tsx         NL suggestion picker (multi-step plan UI).
+    TasksView.tsx               /tasks view: background task list with filter, kill, clear.
+    TaskOutputView.tsx          Full-screen output view for a selected background task.
+    AliasView.tsx               /alias TUI: interactive alias manager (add/edit/delete).
   pty/
     ShellManager.ts             PTY lifecycle, shell init scripts, OSC 7/9001 parsing.
+  tasks/
+    BackgroundTaskManager.ts    Background process manager via child_process.spawn. Singleton.
+                                Emits add/output/update events wired to the Zustand store.
   modules/
     ContextParser.ts            isShellCommand() heuristic + getHints() autocomplete.
   store/
@@ -40,7 +46,7 @@ src/
   ai/
     Provider.ts                 Unified AI provider interface (Ollama, Gemini, OpenAI, Anthropic).
   alias/
-    AliasManager.ts             Alias storage and resolution.
+    AliasManager.ts             Alias storage (~/.lens_aliases.json) and resolution.
   engine/
     OrchestrationEngine.ts      Parses multi-step AI plans; returns steps for y/n confirmation.
   analyzer/
@@ -155,7 +161,10 @@ Slash commands are intercepted in `App.tsx` before any PTY write. The `/` prefix
 | `/fix` | Sends the last failed command + its output to the AI for analysis and a suggested fix. |
 | `/output` | Opens `OutputView`: SQLite-backed browser of past commands. ↑↓ navigate entries; Shift+↑↓ scroll the output panel; Enter pastes the command into the prompt. |
 | `/history <query>` | Semantic search over SQLite history via AI. |
-| `/alias add <name> <value>` | Stores an alias via `AliasManager`. |
+| `/bg <cmd>` | Spawns `<cmd>` via `child_process.spawn` (not PTY) in the background. Supports alias expansion and `--cwd /path` override. Output capped at 500 lines in-memory. |
+| `/tasks` | Opens `TasksView`: list of background tasks with status, elapsed time, filter, kill (K), clear done (D). Enter opens `TaskOutputView` for full-screen output tail. |
+| `/alias` | Opens `AliasView`: interactive TUI for managing aliases (↑↓ navigate, N: new, Enter: edit, D: delete). |
+| `/alias add <name> <value>` | Stores an alias via `AliasManager` (CLI shorthand, also works inside `AliasView`). |
 | `/alias list` | Lists all aliases. |
 | `/alias remove <name>` | Removes an alias. |
 | `/model <name>` | Updates the AI model in the store. |
@@ -163,6 +172,41 @@ Slash commands are intercepted in `App.tsx` before any PTY write. The `/` prefix
 | `/provider <name>` | Updates the AI provider in the store. |
 | `/config` | Renders `ConfigView`. |
 | `/clear` | Clears the in-memory history entries. |
+| `/quit` or `/q` | Kills all background tasks via `taskManager.killAll()` then calls `process.exit(0)`. |
+
+---
+
+## Background Task System (`src/tasks/BackgroundTaskManager.ts`)
+
+`BackgroundTaskManager` (singleton exported as `taskManager`) manages long-lived background processes independently of the main PTY shell.
+
+**Key design points:**
+- Uses `child_process.spawn(shell, ['-c', command], { stdio: ['ignore', 'pipe', 'pipe'] })` — not a PTY. This allows true background execution while the shell stays interactive.
+- Each task is identified by a short random ID and stored in the Zustand `backgroundTasks[]` array.
+- Output (stdout + stderr merged) is accumulated in `task.output: string[]`, capped at **500 lines** (oldest lines are dropped).
+- Task output is in-memory only — not persisted to SQLite.
+- Events emitted: `add` (new task), `output` (new lines), `update` (status/pid/exitCode changes).
+- The store is wired lazily via `wireTaskManagerToStore()` called once at app bootstrap in `App.tsx`, using a dynamic `import()` to avoid circular module dependencies.
+
+**`BackgroundTask` interface:**
+```ts
+interface BackgroundTask {
+  id: string;         // short random ID
+  label: string;      // first token of command, or alias name
+  command: string;    // full expanded command
+  cwd: string;        // working directory at spawn time
+  status: 'running' | 'done' | 'failed' | 'killed';
+  pid?: number;
+  output: string[];   // last 500 lines
+  startTime: number;  // epoch ms
+  endTime?: number;
+  exitCode?: number;
+}
+```
+
+**Footer badge:** `Footer.tsx` reads `backgroundTasks` from the store and renders `⚡ N running` in yellow when any task has `status === 'running'`.
+
+**`/bg` alias expansion:** `App.tsx` calls `aliasManager.expand(rawCmd)` before spawning, so `/bg dev` with alias `dev → make dev` correctly runs `make dev` in the background.
 
 ---
 

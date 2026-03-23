@@ -7,6 +7,9 @@ export const Footer = () => {
   const model = useAppStore((state) => state.model);
   const error = useAppStore((state) => state.error);
   const scrollOffset = useAppStore((state) => state.scrollOffset);
+  const backgroundTasks = useAppStore((state) => state.backgroundTasks);
+
+  const runningCount = backgroundTasks.filter((t) => t.status === 'running').length;
 
   return (
     <Box marginTop={1} flexDirection="row" justifyContent="space-between" width="100%">
@@ -16,6 +19,11 @@ export const Footer = () => {
 
       <Box>
         {scrollOffset > 0 && <Box marginRight={1}><Text color="yellow" bold>↑ SCROLLED </Text></Box>}
+        {runningCount > 0 && (
+          <Box marginRight={2}>
+            <Text color="yellow" bold>⚡ {runningCount} running</Text>
+          </Box>
+        )}
         {error ? (
           <Box marginRight={2}>
             <Text color="red">❌ {error}</Text>

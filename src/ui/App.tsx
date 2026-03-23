@@ -20,6 +20,10 @@ import { OrchestrationEngine } from '../engine/OrchestrationEngine.js';
 import { lensDB } from '../db/LensDB.js';
 import { THEMES } from './themes.js';
 import { OutputRenderer, groupHistoryForRender } from './OutputRenderer.js';
+import { TasksView } from './TasksView.js';
+import { TaskOutputView } from './TaskOutputView.js';
+import { AliasView } from './AliasView.js';
+import { taskManager, wireTaskManagerToStore } from '../tasks/BackgroundTaskManager.js';
 
 export const App = () => {
   const history = useAppStore((state) => state.history);
@@ -57,6 +61,7 @@ export const App = () => {
       useAppStore.setState({ commandHistory: cmds, historyIndex: cmds.length });
     }
     setAliases(aliasManager.list());
+    wireTaskManagerToStore();
   }, [setAliases]);
 
   useEffect(() => {
@@ -251,6 +256,11 @@ Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the
       return;
     }
 
+    if (cmd === '/quit' || cmd === '/q') {
+      taskManager.killAll();
+      process.exit(0);
+    }
+
     if (cmd.startsWith('/model ')) {
       const newModel = cmd.replace('/model ', '').trim();
       useAppStore.getState().setModel(newModel);
@@ -275,6 +285,29 @@ Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the
       const newProvider = cmd.replace('/provider ', '').trim();
       useAppStore.getState().setProvider(newProvider);
       addHistory({ type: 'system', content: `[Config] Provider changed to: ${newProvider}` });
+      useAppStore.setState({ input: '' });
+      return;
+    }
+
+    if (cmd.startsWith('/tasks')) {
+      useAppStore.setState({ view: 'tasks', input: '' });
+      return;
+    }
+
+    if (cmd.startsWith('/bg ')) {
+      const raw = cmd.replace('/bg ', '').trim();
+      // Parse optional --cwd flag
+      const cwdMatch = raw.match(/--cwd\s+(\S+)\s*/);
+      const cwdOverride = cwdMatch ? cwdMatch[1] : null;
+      const rawCmd = cwdMatch ? raw.replace(cwdMatch[0], '').trim() : raw;
+      // Expand alias if the first token matches one
+      const expanded = aliasManager.expand(rawCmd);
+      const taskCwd = cwdOverride
+        ? cwdOverride.replace(/^~/, process.env.HOME || '')
+        : cwd;
+      const label = rawCmd.split(' ')[0];
+      taskManager.spawn(expanded, taskCwd, label);
+      addHistory({ type: 'system', content: `[bg] Started: ${expanded} (cwd: ${taskCwd})` });
       useAppStore.setState({ input: '' });
       return;
     }
@@ -392,6 +425,11 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
         addHistory({ type: 'system', content: `[Error] ${err instanceof Error ? err.message : String(err)}` });
       }
       setIsThinking(false);
+      return;
+    }
+
+    if (cmd === '/alias') {
+      useAppStore.setState({ view: 'aliases', input: '' });
       return;
     }
 
@@ -554,6 +592,12 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
           <SuggestionsView />
         ) : view === 'output' ? (
           <OutputView />
+        ) : view === 'tasks' ? (
+          <TasksView />
+        ) : view === 'task-output' ? (
+          <TaskOutputView />
+        ) : view === 'aliases' ? (
+          <AliasView />
         ) : (
           groupHistoryForRender(visibleHistory).map((group, index) => (
             <Box key={index} width="100%">
@@ -570,7 +614,7 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
       </Box>
       
       {/* PROMPT */}
-      {view !== 'history' && view !== 'suggestions' && view !== 'output' && (
+      {view !== 'history' && view !== 'suggestions' && view !== 'output' && view !== 'tasks' && view !== 'task-output' && view !== 'aliases' && (
         <Box backgroundColor={theme.bg} height={3} width="100%" flexDirection="column">
           {view === 'config' ? (
             <Box paddingY={1} paddingX={1} width="100%">

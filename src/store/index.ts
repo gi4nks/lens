@@ -48,6 +48,19 @@ export interface SuggestionItem {
   description: string;
 }
 
+export interface BackgroundTask {
+  id: string;
+  label: string;
+  command: string;
+  cwd: string;
+  status: 'running' | 'done' | 'failed' | 'killed';
+  pid?: number;
+  output: string[];
+  startTime: number;
+  endTime?: number;
+  exitCode?: number;
+}
+
 interface AppState {
   input: string;
   ghostText: string;
@@ -62,8 +75,10 @@ interface AppState {
   apiKeys: Record<string, string>;
   theme: string;
   maxHistorySize: number;
-  view: 'shell' | 'config' | 'history' | 'suggestions' | 'output';
+  view: 'shell' | 'config' | 'history' | 'suggestions' | 'output' | 'tasks' | 'task-output' | 'aliases';
   outputViewQuery: string;
+  backgroundTasks: BackgroundTask[];
+  selectedTaskId: string | null;
   error: string | null;
   scrollOffset: number;
   cwd: string;
@@ -101,6 +116,7 @@ interface AppState {
   setAiFixSuggestion: (suggestion: string | null) => void;
   setShellBusy: (busy: boolean) => void;
   setPendingOrchestrationPlan: (plan: string[] | null) => void;
+  setSelectedTaskId: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -129,6 +145,8 @@ export const useAppStore = create<AppState>((set) => ({
   aiFixSuggestion: null,
   isShellBusy: false,
   pendingOrchestrationPlan: null,
+  backgroundTasks: [],
+  selectedTaskId: null,
 
   setInput: (text) => set({ input: text }),
   setGhostText: (text) => set({ ghostText: text }),
@@ -191,4 +209,5 @@ export const useAppStore = create<AppState>((set) => ({
   setAiFixSuggestion: (suggestion) => set({ aiFixSuggestion: suggestion }),
   setShellBusy: (isShellBusy) => set({ isShellBusy }),
   setPendingOrchestrationPlan: (pendingOrchestrationPlan) => set({ pendingOrchestrationPlan }),
+  setSelectedTaskId: (selectedTaskId) => set({ selectedTaskId }),
 }));
