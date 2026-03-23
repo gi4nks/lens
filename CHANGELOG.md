@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/gi4nks/lens/compare/v1.2.0...v1.2.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* escape quotes in AliasView to satisfy react/no-unescaped-entities ([a7904ec](https://github.com/gi4nks/lens/commit/a7904ec42b570b789b78db88ed691bf84573775c))
+
 # [1.2.0](https://github.com/gi4nks/lens/compare/v1.1.0...v1.2.0) (2026-03-23)
 
 
