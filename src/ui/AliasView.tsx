@@ -208,7 +208,7 @@ export const AliasView = () => {
 
       {mode === 'confirm-delete' && selected && (
         <Box marginTop={1}>
-          <Text color="yellow">Delete "{selected.name}"? (y/n)</Text>
+          <Text color="yellow">Delete &quot;{selected.name}&quot;? (y/n)</Text>
         </Box>
       )}
 
