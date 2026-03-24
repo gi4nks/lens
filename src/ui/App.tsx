@@ -380,10 +380,20 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
     }
 
     if (cmd.startsWith('/help')) {
-      addHistory({
-        type: 'system',
-        content: `[Help] /config | /clear | /history | /output [filter] | /gpt <prompt> | /fix | /alias add|list|remove | <natural lang>`,
-      });
+      addHistory({ type: 'system', content: '[Help] Lens Terminal Assistant Commands:' });
+      addHistory({ type: 'system', content: '  /gpt <prompt>      Ask AI for help or a multi-step plan' });
+      addHistory({ type: 'system', content: '  /fix               Analyze and suggest a fix for the last failed command' });
+      addHistory({ type: 'system', content: '  /history [query]   Search or browse history (semantic search if query provided)' });
+      addHistory({ type: 'system', content: '  /output [filter]   Browse past command outputs' });
+      addHistory({ type: 'system', content: '  /bg <cmd> [--cwd]  Run command in the background' });
+      addHistory({ type: 'system', content: '  /tasks             Manage background tasks' });
+      addHistory({ type: 'system', content: '  /alias [cmd]       Manage aliases (interactive TUI if no cmd)' });
+      addHistory({ type: 'system', content: '  /theme <name>      Change UI theme' });
+      addHistory({ type: 'system', content: '  /model <name>      Change AI model' });
+      addHistory({ type: 'system', content: '  /provider <name>   Change AI provider' });
+      addHistory({ type: 'system', content: '  /config            Open configuration view' });
+      addHistory({ type: 'system', content: '  /clear             Clear session history' });
+      addHistory({ type: 'system', content: '  /quit | /q         Exit Lens' });
       return;
     }
 
