@@ -14,7 +14,7 @@ function loadConfig() {
    return { provider: 'Ollama', model: 'llama3.1:latest', apiKeys: {}, theme: 'dark', maxHistorySize: 50 };
 }
 
-function saveConfig(data: Partial<Pick<AppState, 'provider' | 'model' | 'apiKeys' | 'theme' | 'maxHistorySize'>>) {
+function saveConfig(data: Partial<Pick<AppState, 'provider' | 'model' | 'apiKeys' | 'theme' | 'maxHistorySize' | 'ollamaUrl'>>) {
    try {
       const existing = fs.existsSync(CONFIG_PATH)
          ? JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'))
@@ -73,6 +73,7 @@ interface AppState {
   provider: string;
   model: string;
   apiKeys: Record<string, string>;
+  ollamaUrl: string;
   theme: string;
   maxHistorySize: number;
   view: 'shell' | 'config' | 'history' | 'suggestions' | 'output' | 'tasks' | 'task-output' | 'aliases';
@@ -102,6 +103,7 @@ interface AppState {
   setProvider: (provider: string) => void;
   setModel: (model: string) => void;
   setApiKey: (provider: string, key: string) => void;
+  setOllamaUrl: (url: string) => void;
   setError: (error: string | null) => void;
   scrollUp: (amount: number) => void;
   scrollDown: (amount: number) => void;
@@ -131,6 +133,7 @@ export const useAppStore = create<AppState>((set) => ({
   provider: initialConfig.provider || 'Ollama',
   model: initialConfig.model || 'llama3.1:latest',
   apiKeys: initialConfig.apiKeys || {},
+  ollamaUrl: initialConfig.ollamaUrl || 'http://localhost:11434',
   theme: initialConfig.theme || 'dark',
   maxHistorySize: initialConfig.maxHistorySize || 50,
   view: 'shell',
@@ -185,6 +188,10 @@ export const useAppStore = create<AppState>((set) => ({
     saveConfig({ apiKeys });
     return { apiKeys };
   }),
+  setOllamaUrl: (ollamaUrl) => {
+    set({ ollamaUrl });
+    saveConfig({ ollamaUrl });
+  },
   setError: (error) => set({ error }),
   scrollUp: (amount) => set((state) => ({
     scrollOffset: Math.min(state.scrollOffset + amount, Math.max(0, state.history.length - 5))

@@ -14,7 +14,7 @@ export const Header = () => {
   const version = packageJson.version;
 
   return (
-    <Box flexDirection="row" paddingBottom={1} width="100%" justifyContent="space-between">
+    <Box flexDirection="row" width="100%" justifyContent="space-between">
       <Box>
         <Box marginRight={1}>
           <Text color={theme.primary} bold>lens</Text>

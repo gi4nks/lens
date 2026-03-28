@@ -7,7 +7,11 @@ export class OllamaProvider implements AIProvider {
   private model: string;
 
   constructor(config: Partial<ProviderConfig> = {}) {
-    this.endpoint = config.endpoint || 'http://localhost:11434/api/chat';
+    let base = config.endpoint || 'http://localhost:11434/api/chat';
+    if (!base.startsWith('http://') && !base.startsWith('https://')) {
+      base = 'http://' + base;
+    }
+    this.endpoint = base;
     this.model = config.model || 'llama3.2';
   }
 
@@ -17,6 +21,11 @@ export class OllamaProvider implements AIProvider {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: this.model, messages, stream: true }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ollama error (${response.status}): ${errorText || response.statusText}`);
+    }
 
     if (!response.body) throw new Error('No response body from Ollama');
 

@@ -33,6 +33,7 @@ export const App = () => {
   const aiProviderName = useAppStore((state) => state.provider);
   const aiModelName = useAppStore((state) => state.model);
   const apiKeys = useAppStore((state) => state.apiKeys);
+  const ollamaUrl = useAppStore((state) => state.ollamaUrl);
   const scrollOffset = useAppStore((state) => state.scrollOffset);
   const view = useAppStore((state) => state.view);
   const setCwd = useAppStore((state) => state.setCwd);
@@ -48,6 +49,17 @@ export const App = () => {
   const theme = THEMES[currentThemeName] || THEMES.dark;
 
   const [termHeight, setTermHeight] = useState(process.stdout.rows || 24);
+
+  // Refs so the shell effect can always read the latest values without being
+  // re-created (and killing the PTY) every time config changes.
+  const aiProviderNameRef = useRef(aiProviderName);
+  const aiModelNameRef = useRef(aiModelName);
+  const apiKeysRef = useRef(apiKeys);
+  const ollamaUrlRef = useRef(ollamaUrl);
+  aiProviderNameRef.current = aiProviderName;
+  aiModelNameRef.current = aiModelName;
+  apiKeysRef.current = apiKeys;
+  ollamaUrlRef.current = ollamaUrl;
 
   const shellRef = useRef<ShellManager | null>(null);
   // Tracks the last shell command sent to PTY so we can pair it with the exit code
@@ -169,9 +181,10 @@ ${output.slice(-2000)}
 Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the command in the format: FIX_COMMAND: <command>`;
           
           try {
-            const activeProvider = createProvider(aiProviderName, {
-              model: aiModelName,
-              apiKey: apiKeys[aiProviderName],
+            const activeProvider = createProvider(aiProviderNameRef.current, {
+              model: aiModelNameRef.current,
+              apiKey: apiKeysRef.current[aiProviderNameRef.current],
+              endpoint: aiProviderNameRef.current.toLowerCase() === 'ollama' ? `${ollamaUrlRef.current}/api/chat` : undefined,
             });
             const stream = activeProvider.streamChat([{ role: 'user', content: fixPrompt }]);
             let full = '';
@@ -196,7 +209,7 @@ Analyze the error and suggest EXACTLY ONE command to fix it. Reply ONLY with the
 
     shellRef.current = shell;
     return () => shell.stop();
-  }, [addHistory, setCwd, aiProviderName, aiModelName, apiKeys, setAiFixSuggestion]);
+  }, [addHistory, setCwd, setAiFixSuggestion]);
 
   const handleSignal = (signal: string) => {
     if (shellRef.current) {
@@ -352,6 +365,7 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
         const activeProvider = createProvider(aiProviderName, {
           model: aiModelName,
           apiKey: apiKeys[aiProviderName],
+          endpoint: aiProviderName.toLowerCase() === 'ollama' ? `${ollamaUrl}/api/chat` : undefined,
         });
         const stream = activeProvider.streamChat([{ role: 'user', content: semanticPrompt }]);
         let full = '';
@@ -417,6 +431,7 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
         const activeProvider = createProvider(aiProviderName, {
           model: aiModelName,
           apiKey: apiKeys[aiProviderName],
+          endpoint: aiProviderName.toLowerCase() === 'ollama' ? `${ollamaUrl}/api/chat` : undefined,
         });
         const stream = activeProvider.streamChat([{ role: 'user', content: fixPrompt }]);
 
@@ -505,6 +520,7 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
         const activeProvider = createProvider(aiProviderName, {
           model: aiModelName,
           apiKey: apiKeys[aiProviderName],
+          endpoint: aiProviderName.toLowerCase() === 'ollama' ? `${ollamaUrl}/api/chat` : undefined,
         });
         const stream = activeProvider.streamChat(payload);
 
@@ -588,7 +604,7 @@ Reply ONLY with the command string, nothing else. If no good match found, reply 
     <Box flexDirection="column" height={termHeight} width="100%">
       
       {/* HEADER */}
-      <Box borderStyle="single" borderColor={theme.primary} paddingX={1}>
+      <Box backgroundColor={theme.bg} paddingX={1} paddingY={1}>
         <Header />
       </Box>
 
