@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/gi4nks/lens/compare/v1.2.1...v1.3.0) (2026-03-28)
+
+
+### Features
+
+* **ui:** refactor header to use theme background instead of borders ([0c08906](https://github.com/gi4nks/lens/commit/0c08906b5b2360096949da25c151f047a0cdf7c9))
+
 ## [1.2.1](https://github.com/gi4nks/lens/compare/v1.2.0...v1.2.1) (2026-03-23)
 
 
